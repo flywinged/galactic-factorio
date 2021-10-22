@@ -1,4 +1,6 @@
 import random
+import numpy
+import cv2
 from typing import List
 from copy import deepcopy
 
@@ -191,12 +193,13 @@ def generate(iterations: int):
         currentIteration += 1
 
     print("GRID")
-    showGrid(grid)
+    # showGrid(grid)
 
-    grid = dilate(grid)
-    grid = dilate(grid)
-    grid = recede(grid)
-    grid = recede(grid)
+    I = 3
+    for i in range(I):
+        grid = dilate(grid)
+    for j in range(I):
+        grid = recede(grid)
 
     print("GRID")
     showGrid(grid)
@@ -246,7 +249,7 @@ def showGrid(grid):
             print("--", end = "")
         print()
     
-    else:
+    elif False:
         for row in grid:
             for value in row:
                 if value:
@@ -254,5 +257,15 @@ def showGrid(grid):
                 else:
                     print("  ", end = "")
             print()
+    
+    else:
+        #should convert true false to black white first with this
+        mask = numpy.array(grid).astype('uint8')*255
+        #then mask
+        cv2.imwrite("./test.png", mask)
+        # cv2.bitwise_and(img, img, mask = mask)
 
-generate(6)
+import time
+t1 = time.time()
+generate(8)
+print(time.time() - t1)
