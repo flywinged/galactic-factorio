@@ -7,16 +7,20 @@ script.on_event("gf-configure-spaceport", function(event)
     local gui = player.gui
 
     -- Determine if the menu is already open
+    -- If it is, close the menu
     if gui.center.configureSpaceport ~= nil then
         gui.center.clear()
-    elseif selectedEntity ~= nil then
+    
+    -- Otherwise, show the menu as long as their is a selected entity
+    -- AND that entity is a kind of spaceport.
+    elseif selectedEntity ~= nil and selectedEntity.name:find("spaceport", 1, true) then
 
-        -- Don't open the configure menu if the selected entity is not a spaceport entity
-        if selectedEntity.name:find("spaceport", 1, true) then
+        -- Menu for spaceport hubs specifically
+        if selectedEntity.name:find("spaceport-hub", 1, true) then
 
             -- Determine all the different logistics networks
             local options = {}
-            for k, v in pairs(global.spaceportConnections) do
+            for k, v in pairs(global.spaceports) do
                 table.insert(options, v.name)
             end
 
