@@ -73,6 +73,23 @@ end
 
 script.on_event(defines.events.on_chunk_generated, function(event)
 
+    -- Extract fields from the event so that function is
+    -- more readable.
+    local chunkPosition = event.position
+    local area = event.area
+    local surface = event.surface
+
+    local x1 = area.left_top.x
+    local y1 = area.left_top.y
+    local x2 = area.right_bottom.x
+    local y2 = area.right_bottom.y
+
+    -- Delete all generated entities
+    local entities = surface.find_entities(area)
+    for _, entity in ipairs(entities) do
+        entity.destroy()
+    end
+
     -- Intitialize the global values if they don't already exists
     -- This is where information about each planet generation is stored.
     if global.initialized == nil then
@@ -98,18 +115,10 @@ script.on_event(defines.events.on_chunk_generated, function(event)
         --  Generate the initial spawn planet
         generatePlanet({x=0, y=0})
 
+        -- Set the terrain geenration setting necessary for the mod to function
+        surface.always_day = true
+
     end
-
-    -- Extract fields from the event so that function is
-    -- more readable.
-    local chunkPosition = event.position
-    local area = event.area
-    local surface = event.surface
-
-    local x1 = area.left_top.x
-    local y1 = area.left_top.y
-    local x2 = area.right_bottom.x
-    local y2 = area.right_bottom.y
 
     -- Tiles is what we will build up
     local tiles = {}
