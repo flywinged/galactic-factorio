@@ -11,21 +11,32 @@ local MIN_PLANET_SIZE = 16
 local MAX_PLANET_SIZE = 100
 local MINIMUM_PLANET_SPACING = 12 -- in Chunks
 local MAXIMUM_PLANET_SPACING = 16 -- in chunks
+-- Average number of other planets generated between the minimum
+-- and maximum spacings around each planet.
 local AVERAGE_PLANET_DENSITY = 3
+
+-- Planets get generated larger and larger the further out you go
+-- Every 1000 blocks is another power
+local DISTANCE_EXPONENT = 1.05
+local MAX_EXPONENT = 4
 
 local function generatePlanet(center)
 
     log("Creating Planet")
     log(getStringLocation(center))
 
+    local distance = (center.x^2 + center.y^2)^0.5
+    local distanceModifier = DISTANCE_EXPONENT ^ (distance / 1000)
+    if distanceModifier > MAX_EXPONENT then distanceModifier = MAX_EXPONENT end
+
     -- Generate the planet loop
     local planetLoop = GenerateLoop(center, 8, .55)
     SetLoopMeanAndSTD(
         planetLoop,
-        AVERAGE_PLANET_SIZE,
-        PLANET_DEVIATION,
-        MIN_PLANET_SIZE,
-        MAX_PLANET_SIZE
+        distanceModifier * AVERAGE_PLANET_SIZE,
+        distanceModifier * PLANET_DEVIATION,
+        distanceModifier * MIN_PLANET_SIZE,
+        distanceModifier * MAX_PLANET_SIZE
     )
 
     -- Determine what chunks are enclosed by this planet
@@ -149,8 +160,14 @@ script.on_event(defines.events.on_chunk_generated, function(event)
     global.chunksGenerated[chunkString] = true
 
     -- Values for determining generation chance
-    local maximumSize = MAXIMUM_PLANET_SPACING * MAXIMUM_PLANET_SPACING
-    local minimumSize = MINIMUM_PLANET_SPACING * MINIMUM_PLANET_SPACING
+    local distance = 32*((chunkPosition.x^2 + chunkPosition.y^2)^0.5)
+    local distanceModifier = DISTANCE_EXPONENT ^ (distance / 1000)
+    if distanceModifier > MAX_EXPONENT then distanceModifier = MAX_EXPONENT end
+
+    local adjustedMaxSpacing = math.floor(distanceModifier * MAXIMUM_PLANET_SPACING)
+    local adjustedMinSpacing = math.floor(distanceModifier * MINIMUM_PLANET_SPACING)
+    local maximumSize = distanceModifier * adjustedMaxSpacing * adjustedMaxSpacing
+    local minimumSize = distanceModifier * adjustedMinSpacing * adjustedMinSpacing
     local area = maximumSize - minimumSize
     local generationChance = AVERAGE_PLANET_DENSITY / area
 
@@ -162,8 +179,8 @@ script.on_event(defines.events.on_chunk_generated, function(event)
         -- First determine all the locations which could
         -- have another planet generated.
         local possibleLocations = {}
-        for x = -MAXIMUM_PLANET_SPACING, MAXIMUM_PLANET_SPACING do
-            for y = -MAXIMUM_PLANET_SPACING, MAXIMUM_PLANET_SPACING do
+        for x = -adjustedMaxSpacing, adjustedMaxSpacing do
+            for y = -adjustedMaxSpacing, adjustedMaxSpacing do
                 table.insert( possibleLocations, {
                     x = chunkPosition.x + x,
                     y = chunkPosition.y + y
@@ -194,7 +211,7 @@ script.on_event(defines.events.on_chunk_generated, function(event)
                     (potentialLocation.x - planetCenter.x) ^ 2 + 
                     (potentialLocation.y - planetCenter.y) ^ 2
                 ) ^ 0.5)
-                if chunkDistance < MINIMUM_PLANET_SPACING then
+                if chunkDistance < adjustedMinSpacing then
                     goto skip
                 end
             end
