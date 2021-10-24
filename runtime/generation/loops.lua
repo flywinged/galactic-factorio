@@ -99,6 +99,18 @@ function SetLoopMeanAndSTD(loop, mean, STD, min, max)
 
 end
 
+function GetLoopRadius(loop, angle) 
+
+    local index = angle / (2 * math.pi) * loop.size
+    local lowerValue = loop[math.floor(index)]
+    local upperValue = loop[math.ceil(index)]
+    local remainder = index - math.floor(index)
+    local radius = lowerValue + remainder * (upperValue - lowerValue)
+
+    return radius
+
+end
+
 -- Helper function for returning how far outside or inside a loop a point is
 -- The value will be positive if it is outside, and negative if it is inside.
 function InsideLoop(loop, point)
@@ -112,14 +124,37 @@ function InsideLoop(loop, point)
     end
 
     -- Determine the distance of the loop at this angle
-    local index = angle / (2 * math.pi) * loop.size
-    local lowerValue = loop[math.floor(index)]
-    local upperValue = loop[math.ceil(index)]
-    local remainder = index - math.floor(index)
-    local radius = lowerValue + remainder * (upperValue - lowerValue)
+    local radius = GetLoopRadius(loop, angle)
 
     -- Determine the distance of the point from the center
     local distance = (deltaX^2 + deltaY^2)^(0.5)
     return distance - radius
+
+end
+
+-- Function for checking inclusion of multiple different loops
+function InsideLoops(loops, point)
+
+    -- First, determine if the point is inside the inside loops
+    local inside = false
+    for _, loop in ipairs(loops.inside) do
+        if InsideLoop(loop, point) < 0 then
+            inside = true
+            break
+        end
+    end
+
+    -- If we aren't inside, we can safely just return
+    if not inside then return false end
+
+    if loops.outside == nil then return inside end
+
+    -- Then, do the same for outside loops
+    for _, loop in ipairs(loops.outside) do
+        if InsideLoop(loop, point) < 0 then return false end
+    end
+
+    -- If here, we are inside the loop!
+    return true
 
 end

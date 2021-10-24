@@ -15,12 +15,54 @@ local MAXIMUM_PLANET_SPACING = 16 -- in chunks
 -- and maximum spacings around each planet.
 local AVERAGE_PLANET_DENSITY = 3
 
+-- Resource chance
+local IRON_CHANCE = .3
+local COPPER_CHANCE = .3
+local COAL_CHANCE = .2
+local STONE_CHANCE = .15
+local OIL_CHANCE = .1
+local URANIUM_CHANCE = .05
+
 -- Planets get generated larger and larger the further out you go
 -- Every 1000 blocks is another power
 local DISTANCE_EXPONENT = 1.05
 local MAX_EXPONENT = 4
 
-local function generatePlanet(center)
+local function addResourceToPlanet(
+    resourceTable,
+    generationCenters,
+    liquid
+)
+
+    local randomIndex = global.randomGenerator(1, #generationCenters)
+
+    if liquid then
+        table.insert( resourceTable, generationCenters[randomIndex] )
+        table.remove( generationCenters, randomIndex )
+        return 
+    end
+
+    local distance = (generationCenters[randomIndex].x^2 + generationCenters[randomIndex].y^2)^0.5
+    local distanceModifier = DISTANCE_EXPONENT ^ (distance / 1000)
+    if distanceModifier > MAX_EXPONENT then distanceModifier = MAX_EXPONENT end
+
+    local loop = GenerateLoop(generationCenters[randomIndex], 4, 0.55)
+    SetLoopMeanAndSTD(
+        loop,
+        distanceModifier * 5,
+        distanceModifier * 3,
+        distanceModifier * 1,
+        distanceModifier * 8
+    )
+    table.insert( resourceTable, loop)
+    table.remove( generationCenters, randomIndex )
+
+end
+
+local function generatePlanet(
+    center,
+    startingPlanet
+)
 
     log("Creating Planet")
     log(getStringLocation(center))
@@ -56,10 +98,69 @@ local function generatePlanet(center)
         end
     end
 
+    -- Determine how many resources should be generated on the planet
+    local resourceLoops = {
+        iron = {},
+        copper = {},
+        coal = {},
+        stone = {},
+        oil = {},
+        uranium = {}
+    }
+
+    -- Pick a bunch of random locations on the planet where resources could
+    -- be generated. These positions will be chosen arbitrarily by
+    -- each resource.
+    local generationCenters = {}
+    local attempts = 0
+    while #generationCenters < 12 and attempts < 1000 do
+
+        -- Generate an arbitrary position
+        local angle = 2 * math.pi * Random()
+        local distanceFromCenter = GetLoopRadius(planetLoop, angle) * (.1 + (.8 * Random()))
+        local position = {
+            x = math.floor(planetLoop.center.x + math.cos(angle) * distanceFromCenter),
+            y = math.floor(planetLoop.center.y + math.sin(angle) * distanceFromCenter)
+        }
+
+        -- Ensure this position is far enough away from other generated positions
+        for _, location in ipairs(generationCenters) do
+            local distance = ((location.x - position.x)^2 + (location.y - position.y)^2)^(1/2)
+            if distance < AVERAGE_PLANET_SIZE / 4 then goto skip end
+        end
+
+        -- If here without skipping, we should add this center
+        table.insert( generationCenters, position )
+
+        ::skip::
+        attempts = attempts + 1
+
+    end
+
+    -- For now, just write each generation event out explicitly
+    if startingPlanet then
+        addResourceToPlanet(resourceLoops.iron, generationCenters, false)
+        addResourceToPlanet(resourceLoops.copper, generationCenters, false)
+        addResourceToPlanet(resourceLoops.stone, generationCenters, false)
+        addResourceToPlanet(resourceLoops.coal, generationCenters, false)
+    else
+        while Random() < IRON_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.iron, generationCenters, false) end
+        while Random() < COPPER_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.copper, generationCenters, false) end
+        while Random() < STONE_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.stone, generationCenters, false) end
+        while Random() < COAL_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.coal, generationCenters, false) end
+        while Random() < OIL_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.oil, generationCenters, true) end
+        while Random() < URANIUM_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.uranium, generationCenters, false) end
+    end
+
     -- Create the planet object
     local planet = {
         chunks = chunks,
-        inclusiveLoops = {planetLoop}
+        landLoops = {
+            inside = {planetLoop},
+            outside = nil,
+        },
+        resourceLoops = resourceLoops,
+        center = center,
     }
 
     -- Update the global objects accordingly
@@ -84,10 +185,18 @@ script.on_event(defines.events.on_chunk_generated, function(event)
     local x2 = area.right_bottom.x
     local y2 = area.right_bottom.y
 
+    --  Distance values
+    local distance = 32*((chunkPosition.x^2 + chunkPosition.y^2)^0.5)
+    local rawDistanceModifier = DISTANCE_EXPONENT ^ (distance / 1000)
+    local distanceModifier = rawDistanceModifier
+    if distanceModifier > MAX_EXPONENT then distanceModifier = MAX_EXPONENT end
+
     -- Delete all generated entities
     local entities = surface.find_entities(area)
     for _, entity in ipairs(entities) do
-        entity.destroy()
+        if entity.get_main_inventory() == nil then
+            entity.destroy()
+        end
     end
 
     -- Intitialize the global values if they don't already exists
@@ -113,7 +222,7 @@ script.on_event(defines.events.on_chunk_generated, function(event)
         global.checkedChunks = {}
 
         --  Generate the initial spawn planet
-        generatePlanet({x=0, y=0})
+        generatePlanet({x=0, y=0}, true)
 
         -- Set the terrain geenration setting necessary for the mod to function
         surface.always_day = true
@@ -132,28 +241,93 @@ script.on_event(defines.events.on_chunk_generated, function(event)
         for y = y1, y2 do
 
             if planet == nil then
-                -- table.insert( tiles, {name = "out-of-map", position = {x, y}})
-                table.insert( tiles, {name = "dirt-1", position = {x, y}})
+                table.insert( tiles, {name = "out-of-map", position = {x, y}})
+                -- table.insert( tiles, {name = "dirt-1", position = {x, y}})
             else
 
                 -- Loop through all the inclusive loops
-                local outOfMap = false
-                for _, loop in ipairs(planet.inclusiveLoops) do
-                    local distance = InsideLoop(loop, {x=x, y=y})
-                    if distance > 0 then
-                        outOfMap = true
-                        goto outside
-                    end
-                end
-
-                ::outside::
+                local point = {x=x, y=y}
+                local outOfMap = InsideLoops(planet.landLoops, point)
 
                 -- Insert the appropriate values
                 if outOfMap then
                     table.insert( tiles, {name = "dirt-2", position = {x, y}})
                 else
-                    table.insert( tiles, {name = "grass-1", position = {x, y}})
+                    table.insert( tiles, {name = "out-of-map", position = {x, y}})
+                    -- table.insert( tiles, {name = "grass-1", position = {x, y}})
+                    goto skip
                 end
+
+                -- Add iron at the center for testing
+                for _, loop in ipairs(planet.resourceLoops.iron) do
+                    if InsideLoop(loop, point) < 0 then
+                        surface.create_entity({
+                            name="iron-ore",
+                            position=point,
+                            amount=10000 * rawDistanceModifier
+                        })
+                        goto skip
+                    end
+                end
+
+                for _, loop in ipairs(planet.resourceLoops.copper) do
+                    if InsideLoop(loop, point) < 0 then
+                        surface.create_entity({
+                            name="copper-ore",
+                            position=point,
+                            amount=10000 * rawDistanceModifier
+                        })
+                        goto skip
+                    end
+                end
+
+                for _, loop in ipairs(planet.resourceLoops.coal) do
+                    if InsideLoop(loop, point) < 0 then
+                        surface.create_entity({
+                            name="coal",
+                            position=point,
+                            amount=10000 * rawDistanceModifier
+                        })
+                        goto skip
+                    end
+                end
+
+                for _, loop in ipairs(planet.resourceLoops.stone) do
+                    if InsideLoop(loop, point) < 0 then
+                        surface.create_entity({
+                            name="stone",
+                            position=point,
+                            amount=10000 * rawDistanceModifier
+                        })
+                        goto skip
+                    end
+                end
+
+                for _, location in ipairs(planet.resourceLoops.oil) do
+                    if location.x == point.x and location.y == point.y then
+                        surface.create_entity({
+                            name="crude-oil",
+                            position=point,
+                            minimum_amount=300000 * rawDistanceModifier, -- Corresponds to 100% at the origin
+                            amount=300000 * rawDistanceModifier
+                        })
+                        goto skip
+                    end
+                end
+
+                for _, loop in ipairs(planet.resourceLoops.uranium) do
+                    if InsideLoop(loop, point) < 0 then
+                        surface.create_entity({
+                            name="uranium-ore",
+                            position=point,
+                            amount=10000 * rawDistanceModifier
+                        })
+                        goto skip
+                    end
+                end
+
+                ::skip::
+
             end
 
         end
@@ -169,10 +343,6 @@ script.on_event(defines.events.on_chunk_generated, function(event)
     global.chunksGenerated[chunkString] = true
 
     -- Values for determining generation chance
-    local distance = 32*((chunkPosition.x^2 + chunkPosition.y^2)^0.5)
-    local distanceModifier = DISTANCE_EXPONENT ^ (distance / 1000)
-    if distanceModifier > MAX_EXPONENT then distanceModifier = MAX_EXPONENT end
-
     local adjustedMaxSpacing = math.floor(distanceModifier * MAXIMUM_PLANET_SPACING)
     local adjustedMinSpacing = math.floor(distanceModifier * MINIMUM_PLANET_SPACING)
     local maximumSize = distanceModifier * adjustedMaxSpacing * adjustedMaxSpacing
@@ -234,7 +404,7 @@ script.on_event(defines.events.on_chunk_generated, function(event)
                 generatePlanet({
                     x = potentialLocation.x * 32 + 16,
                     y = potentialLocation.y * 32 + 16
-                })
+                }, false)
 
                 -- Signify at least one location was generated
                 generatedAtLeastOne = true

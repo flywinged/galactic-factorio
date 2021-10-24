@@ -1,3 +1,7 @@
+require("entities.base.solar")
+require("entities.base.pumps")
+require("entities.base.miners")
+
 require("entities.spaceport")
 
 data:extend(
@@ -21,3 +25,12 @@ data:extend(
 
 }
 )
+
+data:extend({
+
+    {
+        type = "recipe-category",
+        name = "adaptive-mining-tier-1"
+    }
+
+})
