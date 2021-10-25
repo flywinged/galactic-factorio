@@ -16,12 +16,16 @@ local MAXIMUM_PLANET_SPACING = 16 -- in chunks
 local AVERAGE_PLANET_DENSITY = 3
 
 -- Resource chance
-local IRON_CHANCE = .3
-local COPPER_CHANCE = .3
-local COAL_CHANCE = .2
-local STONE_CHANCE = .15
-local OIL_CHANCE = .1
-local URANIUM_CHANCE = .05
+local RESOURCE_CHANCES = {
+    ["iron-ore"] = 0.3,
+    ["copper-ore"] = 0.3,
+    ["coal"] = 0.2,
+    ["stone"] = 0.15,
+    ["crude-oil"] = 0.1,
+    ["electrum-ore"] = 0.05,
+    ["cobalt-ore"] = 0.05,
+    ["uranium-ore"] = 0.05,
+}
 
 -- Planets get generated larger and larger the further out you go
 -- Every 1000 blocks is another power
@@ -98,16 +102,6 @@ local function generatePlanet(
         end
     end
 
-    -- Determine how many resources should be generated on the planet
-    local resourceLoops = {
-        iron = {},
-        copper = {},
-        coal = {},
-        stone = {},
-        oil = {},
-        uranium = {}
-    }
-
     -- Pick a bunch of random locations on the planet where resources could
     -- be generated. These positions will be chosen arbitrarily by
     -- each resource.
@@ -137,20 +131,26 @@ local function generatePlanet(
 
     end
 
-    -- For now, just write each generation event out explicitly
-    if startingPlanet then
-        addResourceToPlanet(resourceLoops.iron, generationCenters, false)
-        addResourceToPlanet(resourceLoops.copper, generationCenters, false)
-        addResourceToPlanet(resourceLoops.stone, generationCenters, false)
-        addResourceToPlanet(resourceLoops.coal, generationCenters, false)
+    local resourceLoops = {}
+    for resourceName, resourceChance in pairs(RESOURCE_CHANCES) do
+        resourceLoops[resourceName] = {}
+
+        -- For now, just write each generation event out explicitly
+    if (
+        startingPlanet and
+        resourceName == "iron-ore" or 
+        resourceName == "copper-ore" or
+        resourceName == "coal" or
+        resourceName == "stone"
+    )then
+        addResourceToPlanet(resourceLoops[resourceName], generationCenters, false)
     else
-        while Random() < IRON_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.iron, generationCenters, false) end
-        while Random() < COPPER_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.copper, generationCenters, false) end
-        while Random() < STONE_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.stone, generationCenters, false) end
-        while Random() < COAL_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.coal, generationCenters, false) end
-        while Random() < OIL_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.oil, generationCenters, true) end
-        while Random() < URANIUM_CHANCE and #generationCenters > 0 do addResourceToPlanet(resourceLoops.uranium, generationCenters, false) end
+        while Random() < resourceChance and #generationCenters > 0 do addResourceToPlanet(resourceLoops[resourceName], generationCenters, false) end
     end
+
+    end
+
+    
 
     -- Create the planet object
     local planet = {
@@ -258,71 +258,35 @@ script.on_event(defines.events.on_chunk_generated, function(event)
                     goto skip
                 end
 
-                -- Add iron at the center for testing
-                for _, loop in ipairs(planet.resourceLoops.iron) do
-                    if InsideLoop(loop, point) < 0 then
-                        surface.create_entity({
-                            name="cobalt-ore",
-                            position=point,
-                            amount=10000 * rawDistanceModifier
-                        })
-                        goto skip
-                    end
-                end
+                -- Place the resource where relevant
+                for resourceName, loops in pairs(planet.resourceLoops) do
+                    for _, loop in ipairs(loops) do
 
-                for _, loop in ipairs(planet.resourceLoops.copper) do
-                    if InsideLoop(loop, point) < 0 then
-                        surface.create_entity({
-                            name="electrum-ore",
-                            position=point,
-                            amount=10000 * rawDistanceModifier
-                        })
-                        goto skip
-                    end
-                end
+                        if resourceName == "crude-oil" then
+                            for _, location in ipairs(planet.resourceLoops[resourceName]) do
+                                if location.x == point.x and location.y == point.y then
+                                    surface.create_entity({
+                                        name=resourceName,
+                                        position=point,
+                                        minimum_amount=300000 * rawDistanceModifier, -- Corresponds to 100% at the origin
+                                        amount=300000 * rawDistanceModifier
+                                    })
+                                    goto skip
+                                end
+                            end
+                        
+                        else
+                            if InsideLoop(loop, point) < 0 then
+                                surface.create_entity({
+                                    name=resourceName,
+                                    position=point,
+                                    amount=10000 * rawDistanceModifier
+                                })
+                                goto skip
+                            end
+                        end
 
-                for _, loop in ipairs(planet.resourceLoops.coal) do
-                    if InsideLoop(loop, point) < 0 then
-                        surface.create_entity({
-                            name="coal",
-                            position=point,
-                            amount=10000 * rawDistanceModifier
-                        })
-                        goto skip
-                    end
-                end
-
-                for _, loop in ipairs(planet.resourceLoops.stone) do
-                    if InsideLoop(loop, point) < 0 then
-                        surface.create_entity({
-                            name="stone",
-                            position=point,
-                            amount=10000 * rawDistanceModifier
-                        })
-                        goto skip
-                    end
-                end
-
-                for _, location in ipairs(planet.resourceLoops.oil) do
-                    if location.x == point.x and location.y == point.y then
-                        surface.create_entity({
-                            name="crude-oil",
-                            position=point,
-                            minimum_amount=300000 * rawDistanceModifier, -- Corresponds to 100% at the origin
-                            amount=300000 * rawDistanceModifier
-                        })
-                        goto skip
-                    end
-                end
-
-                for _, loop in ipairs(planet.resourceLoops.uranium) do
-                    if InsideLoop(loop, point) < 0 then
-                        surface.create_entity({
-                            name="uranium-ore",
-                            position=point,
-                            amount=10000 * rawDistanceModifier
-                        })
-                        goto skip
+                        
                     end
                 end
 
