@@ -39,4 +39,32 @@ local function createMiner()
 
 end
 
-createMiner()
+-- -- createMiner()
+
+-- data.raw["mining-drill"]["burner-mining-drill"].mining_speed = .5
+-- data.raw["mining-drill"]["burner-mining-drill"].energy_usage = "250kW"
+
+-- local coalBlock = table.deepcopy(data.raw["item"]["solid-fuel"])
+-- coalBlock.name = "coal-block"
+-- coalBlock.fuel_value = "40MJ"
+-- coalBlock.fuel_acceleration_multiplier = 1.0
+-- coalBlock.fuel_top_speed_multiplier = 1.0
+-- Images.TintRecipeOrItem(coalBlock, {r = 0.2, g = 0.2, b = 0.2})
+
+-- local coalBlockRecipe = {
+--     type = "recipe",
+--     name = "coal-block",
+--     enabled = true,
+
+--     energy_required = 5,
+
+--     ingredients =
+--     {
+--         {"coal", 8},
+--     },
+
+--     result = "coal-block",
+--     result_count = 1
+-- }
+
+-- data:extend({coalBlock, coalBlockRecipe})

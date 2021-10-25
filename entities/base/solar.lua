@@ -11,17 +11,28 @@ local function createSolarPanel(
     -- First we'll create the panel entity
     local name = "solar-panel-"..tostring(panelCount)
 
+    if panelCount == 1 then
+        name = "solar-panel"
+    end
+
     local panelEntity = table.deepcopy(data.raw["solar-panel"]["solar-panel"])
     panelEntity.name = name
     panelEntity.minable.result = name
     panelEntity.production = tostring(production).."kW"
-    Images.TintImages(panelEntity, tint)
+    panelEntity.collision_box = {{-0.7, -0.7}, {0.7, 0.7}}
+    panelEntity.selection_box = {{-1, -1}, {1, 1}}
+
+    if panelCount == 1 then
+        Images.MultiplyImages(panelEntity, 0.66)
+    else
+        Images.TintImages(panelEntity, tint)
+    end
 
     -- Now create the panel item
     local panelItem = table.deepcopy(data.raw["item"]["solar-panel"])
     panelItem.name = name
     panelItem.place_result = name
-    Images.TintRecipeOrItem(panelItem, tint)
+    if panelCount ~= 1 then Images.TintRecipeOrItem(panelItem, tint) end
 
     -- Final create the new recipe
     local panelRecipe = table.deepcopy(data.raw["recipe"]["solar-panel"])
@@ -37,25 +48,57 @@ local function createSolarPanel(
 
 end
 
-local function removeSolarPanel ()
-    data.raw["solar-panel"]["solar-panel"] = nil
-    data.raw["item"]["solar-panel"] = nil
-    data.raw["recipe"]["solar-panel"] = nil
-end
+-- -- Create each tier of solar panel
+-- createSolarPanel(
+--     90,
+--     {r=.3, g=.3, b=.3, a=1.0},
+--     {
+--         {"iron-plate", 8},
+--         {"copper-plate", 4},
+--         {"electronic-circuit", 12}
+--     }
+-- )
 
--- Create each tier of solar panel
-createSolarPanel(
-    90,
-    {r=.4, g=.7, b=.4, a=1.0},
-    {
-        {"electronic-circuit", 12}
-    }
-)
+-- createSolarPanel(
+--     150,
+--     {r=.4, g=.6, b=.4, a=1.0},
+--     {
+--         {"solar-panel", 1},
+--         {"steel-plate", 8},
+--         {"copper-plate", 4},
+--         {"electronic-circuit", 24}
+--     }
+-- )
 
-createSolarPanel(
-    270,
-    {r=.7, g=.4, b=.4, a=1.0},
-    {
-        {"electronic-circuit", 12}
-    }
-)
+-- createSolarPanel(
+--     250,
+--     {r=.8, g=.4, b=.4, a=1.0},
+--     {
+--         {"solar-panel-2", 1},
+--         {"steel-plate", 8},
+--         {"copper-plate", 4},
+--         {"advanced-circuit", 12}
+--     }
+-- )
+
+-- createSolarPanel(
+--     500,
+--     {r=.4, g=.4, b=.6, a=1.0},
+--     {
+--         {"solar-panel-3", 1},
+--         {"steel-plate", 8},
+--         {"copper-plate", 4},
+--         {"advanced-circuit", 24}
+--     }
+-- )
+
+-- createSolarPanel(
+--     1000,
+--     {r=.35, g=.35, b=.35, a=1.0},
+--     {
+--         {"solar-panel-4", 1},
+--         {"steel-plate", 8},
+--         {"copper-plate", 4},
+--         {"processing-unit", 12}
+--     }
+-- )

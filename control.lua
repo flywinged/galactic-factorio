@@ -21,10 +21,8 @@ local function setStartingInventory(event)
     -- Clear the invntory before adding what we need to add to it.
     inventory.clear()
 
-	inventory.insert{name="solar-panel-1",count=20}
-	inventory.insert{name="small-electric-pole",count=5}
-	inventory.insert{name="offshore-pump",count=1}
-	inventory.insert{name="accumulator",count=10}
+	-- inventory.insert{name="burner-mining-drill",count=4}
+	-- inventory.insert{name="stone-furnace",count=2}
 
 end
 

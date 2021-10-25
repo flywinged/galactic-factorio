@@ -262,7 +262,7 @@ script.on_event(defines.events.on_chunk_generated, function(event)
                 for _, loop in ipairs(planet.resourceLoops.iron) do
                     if InsideLoop(loop, point) < 0 then
                         surface.create_entity({
-                            name="iron-ore",
+                            name="cobalt-ore",
                             position=point,
                             amount=10000 * rawDistanceModifier
                         })
@@ -273,7 +273,7 @@ script.on_event(defines.events.on_chunk_generated, function(event)
                 for _, loop in ipairs(planet.resourceLoops.copper) do
                     if InsideLoop(loop, point) < 0 then
                         surface.create_entity({
-                            name="copper-ore",
+                            name="electrum-ore",
                             position=point,
                             amount=10000 * rawDistanceModifier
                         })

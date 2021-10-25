@@ -34,3 +34,24 @@ data:extend({
     }
 
 })
+
+-- Disable EVERYTHING in the default game
+for _, technology in pairs(data.raw["technology"]) do
+    technology.hidden = true
+    technology.enabled = false
+end
+
+for name, recipe in pairs(data.raw["recipe"]) do
+    log(name.."-"..tostring(recipe.hidden).."-"..tostring(recipe.enabled))
+    recipe.hidden = true
+    recipe.enabled = false
+
+    if recipe.normal ~= nil then
+        recipe.expensive = nil
+        recipe.ingredients = recipe.normal.ingredients
+        recipe.result = recipe.normal.result
+        recipe.result_count = recipe.normal.result_count
+        recipe.normal = nil
+    end
+
+end
